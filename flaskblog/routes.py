@@ -1,18 +1,20 @@
 import os
 import secrets
 from PIL import Image
-from flask import flash, redirect, render_template, request, url_for
+from flask import abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 
 from flaskblog import app, bcrypt, db
-from flaskblog.forms import LoginForm, RegistrationForm, UpdateAccountForm
+from flaskblog.forms import LoginForm, PostForm, RegistrationForm, UpdateAccountForm
 from flaskblog.models import Post, User
 
 
 @app.route("/")
 @app.route("/home")
 def home_page():
-    return render_template("home.html", posts=Post.query.all())
+    page = request.args.get("page", 5, type=int)
+    posts = Post.query.paginate(page=page, per_page=1)
+    return render_template("home.html", posts=posts)
 
 
 @app.route("/about")
@@ -40,13 +42,15 @@ def login_page():
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data).first()
-        if user and bcrypt.check_password_hash(user.password, form.password.data):
-            login_user(user=user, remember=form.remember.data)
-            flash(f"{user.username}, you have been logged in!", "success")
-            next_page = request.args.get("next")
-            return redirect(next_page) if next_page else redirect(url_for("home_page"))
-        else:
-            flash("Login unsuccessful. Please check username and password", "danger")
+        try:
+            if user and bcrypt.check_password_hash(user.password, form.password.data):
+                login_user(user=user, remember=form.remember.data)
+                flash(f"{user.username}, you have been logged in!", "success")
+                next_page = request.args.get("next")
+                return redirect(next_page) if next_page else redirect(url_for("home_page"))
+        except ValueError:
+            pass
+        flash("Login unsuccessful. Please check username and password", "danger")
     return render_template("login.html", title="Login", form=form)
 
 
@@ -84,7 +88,7 @@ def account_page():
         current_user.email = form.email.data
         db.session.commit()
         flash("Your account has been updated.", "success")
-        if old_picture:
+        if old_picture and "default.jpg" not in old_picture:
             os.remove((app.root_path + old_picture).replace("/", "\\"))  # somehow os.path.join does not work here
         redirect(url_for("account_page"))
     elif request.method == "GET":
@@ -92,3 +96,54 @@ def account_page():
         form.email.data = current_user.email
     image_file = url_for("static", filename="profile_pics/" + current_user.image_file)
     return render_template("account.html", title="Account", image_file=image_file, form=form)
+
+
+@app.route("/post/new", methods=["GET", "POST"])
+@login_required
+def new_post():
+    form = PostForm()
+    if form.validate_on_submit():
+        post = Post(title=form.title.data, content=form.content.data, author=current_user)
+        db.session.add(post)
+        db.session.commit()
+        flash("Your Post has been created.", "success")
+        return redirect(url_for("home_page"))
+    return render_template("post_form.html", title="New Post", legend="New Post", form=form)
+
+
+@app.route("/post/<int:post_id>", methods=["GET"])
+def post(post_id):
+    post = Post.query.get_or_404(post_id)
+    return render_template("post.html", title=post.title, post=post)
+
+
+@app.route("/post/<int:post_id>/update", methods=["GET", "POST"])
+@login_required
+def update_post(post_id):
+    post = Post.query.get_or_404(post_id)
+    if post.author != current_user:
+        abort(403)
+    form = PostForm()
+    if form.validate_on_submit():
+        post.title = form.title.data
+        post.content = form.content.data
+        db.session.commit()
+        flash("Your Post has been updated.", "success")
+        return redirect(url_for("post", post_id=post.id))
+    elif request.method == "GET":
+        form.title.data = post.title
+        form.content.data = post.content
+
+    return render_template("post_form.html", title="Update Post", legend="Update Post", post=post, form=form)
+
+
+@app.route("/post/<int:post_id>/delete", methods=['POST'])
+@login_required
+def delete_post(post_id):
+    post = Post.query.get_or_404(post_id)
+    if post.author != current_user:
+        abort(403)
+    db.session.delete(post)
+    db.session.commit()
+    flash('Your post has been deleted!', 'success')
+    return redirect(url_for('home_page'))
