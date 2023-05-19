@@ -1,8 +1,11 @@
+import os
+import secrets
+from PIL import Image
 from flask import flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 
 from flaskblog import app, bcrypt, db
-from flaskblog.forms import LoginForm, RegistrationForm
+from flaskblog.forms import LoginForm, RegistrationForm, UpdateAccountForm
 from flaskblog.models import Post, User
 
 
@@ -53,7 +56,39 @@ def logout():
     return redirect(url_for("home_page"))
 
 
-@app.route("/account", methods=["GET"])
+def save_picture(form_picture):
+    random_hex = secrets.token_hex(8)
+    _, f_ext = os.path.splitext(form_picture.filename)
+    picture_fn = random_hex + f_ext
+    picture_path = os.path.join(app.root_path, "static/profile_pics", picture_fn)
+
+    output_size = (125, 125)
+    i = Image.open(form_picture)
+    i.thumbnail(output_size)
+    i.save(picture_path)
+
+    return picture_fn
+
+
+@app.route("/account", methods=["GET", "POST"])
 @login_required
 def account_page():
-    return render_template("account.html", title="Account")
+    form = UpdateAccountForm(username=current_user)
+    if form.validate_on_submit():
+        old_picture = None
+        if form.picture.data:
+            old_picture = url_for("static", filename="profile_pics/" + current_user.image_file)
+            picture_file = save_picture(form.picture.data)
+            current_user.image_file = picture_file
+        current_user.username = form.username.data
+        current_user.email = form.email.data
+        db.session.commit()
+        flash("Your account has been updated.", "success")
+        if old_picture:
+            os.remove((app.root_path + old_picture).replace("/", "\\"))  # somehow os.path.join does not work here
+        redirect(url_for("account_page"))
+    elif request.method == "GET":
+        form.username.data = current_user.username
+        form.email.data = current_user.email
+    image_file = url_for("static", filename="profile_pics/" + current_user.image_file)
+    return render_template("account.html", title="Account", image_file=image_file, form=form)
