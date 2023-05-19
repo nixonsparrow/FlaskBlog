@@ -14,17 +14,21 @@ Models are more directly created by SQL Alchemy than in Django.
 
 #### Methods
 ```
+from flaskblog import app, db
+app.app_context().push()
+db.drop_all()
+db.create_all()
+
 Post.query.all()
 Post.query.first()
 Post.query.filter_by(user_id=1).all()
 
-post = Post(**post_data)
+user = User(**some_user_data)
+db.session.add(user)
+post = Post(**some_post_data)
 db.session.add(post)
 db.session.commit()
 
 db.session.add(wrong_post)
 db.session.rollback()
-
-db.create_all()
-db.drop_all()
 ```
