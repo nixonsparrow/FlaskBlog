@@ -1,7 +1,7 @@
 # FLASK BLOG
 
 Blog application created with Flask Framework (2.3.2), SQLAlchemy
-and automated deploy on Raspberry Pi4. Really. Or not.
+and automated deploy on Raspberry Pi4. Really. Or not. Last chance.
 
 
 ## NOTES
