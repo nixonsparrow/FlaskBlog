@@ -1,6 +1,7 @@
 # FLASK BLOG
 
-Blog application created with Flask Framework (2.3.2) and SQLAlchemy.
+Blog application created with Flask Framework (2.3.2), SQLAlchemy
+and automated deploy on Raspberyy Pi.
 
 
 ## NOTES
