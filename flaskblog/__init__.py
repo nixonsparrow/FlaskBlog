@@ -23,9 +23,11 @@ def create_app(config_class=Config):
     from flaskblog.main.routes import main # noqa F401
     from flaskblog.posts.routes import posts  # noqa F401
     from flaskblog.users.routes import users  # noqa F401
+    from flaskblog.errors.handlers import errors  # noqa F401
 
     app.register_blueprint(main)
     app.register_blueprint(posts)
     app.register_blueprint(users)
+    app.register_blueprint(errors)
 
     return app
