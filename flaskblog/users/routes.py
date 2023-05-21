@@ -1,8 +1,8 @@
 import os
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 
-from flaskblog import app, bcrypt, db
+from flaskblog import bcrypt, db
 from flaskblog.models import Post, User
 from flaskblog.users.forms import LoginForm, RegistrationForm, UpdateAccountForm
 from flaskblog.users.utils import save_picture
@@ -63,7 +63,7 @@ def account_page():
         db.session.commit()
         flash("Your account has been updated.", "success")
         if old_picture and "default.jpg" not in old_picture:
-            os.remove((app.root_path + old_picture).replace("/", "\\"))  # somehow os.path.join does not work here
+            os.remove((current_app.root_path + old_picture).replace("/", "\\"))  # somehow os.path.join does not work here
         redirect(url_for("users.account_page"))
     elif request.method == "GET":
         form.username.data = current_user.username
