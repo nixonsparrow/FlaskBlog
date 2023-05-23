@@ -3,3 +3,4 @@ __pycache__
 site.db
 profile_pics/
 config.py
+local.py
